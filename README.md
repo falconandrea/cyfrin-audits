@@ -12,4 +12,4 @@ For more information: [CodeHawks Docs](https://docs.codehawks.com/) and [First F
 
 A smart contract application for storing a password. Users should be able to store a password and then retrieve it later. Others should not be able to access the password.
 
-My Audit and tests: [here](./2023-10-PasswordStore)
+**Challange and my submissions**: [the challange](./2023-10-PasswordStore) and [my report](./2023-10-PasswordStore/MyReport.md)
