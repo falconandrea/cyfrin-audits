@@ -10,7 +10,7 @@ pragma solidity 0.8.18;
 contract PasswordStoreFixed {
     error PasswordStore__NotOwner();
 
-    address private s_owner;
+    address private immutable s_owner;
     string private s_password;
 
     event SetNetPassword();

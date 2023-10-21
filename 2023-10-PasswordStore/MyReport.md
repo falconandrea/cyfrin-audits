@@ -96,7 +96,7 @@ The impact is high because the function was designed to be used only by the owne
 
 ## Tools Used
 
-- manual review
+- manual check
 - foundry
 
 ## Recommendations
@@ -166,7 +166,7 @@ It also reduces the amount of duplicate code inside the smart contract.
 
 ## Tools Used
 
-- manual review
+- manual check
 - foundry
 
 ## Recommendations
