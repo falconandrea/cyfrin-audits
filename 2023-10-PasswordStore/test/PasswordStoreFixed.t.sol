@@ -2,16 +2,16 @@
 pragma solidity 0.8.18;
 
 import {Test, console} from "forge-std/Test.sol";
-import {PasswordStore} from "../src/PasswordStore.sol";
-import {DeployPasswordStore} from "../script/DeployPasswordStore.s.sol";
+import {PasswordStoreFixed} from "../src/PasswordStoreFixed.sol";
+import {DeployPasswordStoreFixed} from "../script/DeployPasswordStoreFixed.s.sol";
 
-contract PasswordStoreTest is Test {
-    PasswordStore public passwordStore;
-    DeployPasswordStore public deployer;
+contract PasswordStoreFixedTest is Test {
+    PasswordStoreFixed public passwordStore;
+    DeployPasswordStoreFixed public deployer;
     address public owner;
 
     function setUp() public {
-        deployer = new DeployPasswordStore();
+        deployer = new DeployPasswordStoreFixed();
         passwordStore = deployer.run();
         owner = msg.sender;
     }
@@ -27,22 +27,19 @@ contract PasswordStoreTest is Test {
     function test_non_owner_reading_password_reverts() public {
         vm.startPrank(address(1));
 
-        vm.expectRevert(PasswordStore.PasswordStore__NotOwner.selector);
+        vm.expectRevert(PasswordStoreFixed.PasswordStore__NotOwner.selector);
         passwordStore.getPassword();
     }
 
     /**
-     * Test to check that a not-owner user can set a password
+     * Test to check that a not-owner user cannot set a password
      */
-    function test_not_owner_can_set_password() public {
+    function test_not_owner_cannot_set_password() public {
         // User not owner can change the password
         vm.startPrank(address(1));
         string memory expectedPassword = "myNewPassword";
-        passwordStore.setPassword(expectedPassword);
 
-        // Check if password is changed
-        vm.startPrank(owner);
-        string memory actualPassword = passwordStore.getPassword();
-        assertEq(actualPassword, expectedPassword);
+        vm.expectRevert(PasswordStoreFixed.PasswordStore__NotOwner.selector);
+        passwordStore.setPassword(expectedPassword);
     }
 }
