@@ -31,6 +31,18 @@ contract PasswordStoreFixedTest is Test {
         passwordStore.getPassword();
     }
 
+    function test_read_saved_password_from_storage() public {
+        vm.startPrank(owner);
+        string memory expectedPassword = "myNewPassword";
+        passwordStore.setPassword(expectedPassword);
+
+        // Read variable `s_password` from storage
+        bytes32 slot0 = vm.load(address(passwordStore), bytes32(uint256(1)));
+        console.logBytes32(slot0);
+        // It returns "0x6d794e657750617373776f72640000000000000000000000000000000000001a"
+        // Converted from bytes32 to string is "myNewPassword"
+    }
+
     /**
      * Test to check that a not-owner user cannot set a password
      */
