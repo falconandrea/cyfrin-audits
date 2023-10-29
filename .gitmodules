@@ -1,0 +1,18 @@
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/base64"]
+	path = lib/base64
+	url = https://github.com/Brechtpd/base64
+[submodule "2023-10-Puppy-Raffle/lib/forge-std"]
+	path = 2023-10-Puppy-Raffle/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "2023-10-Puppy-Raffle/lib/openzeppelin-contracts"]
+	path = 2023-10-Puppy-Raffle/lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "2023-10-Puppy-Raffle/lib/base64"]
+	path = 2023-10-Puppy-Raffle/lib/base64
+	url = https://github.com/Brechtpd/base64
