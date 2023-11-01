@@ -709,3 +709,50 @@ Manual review.
 ## Recommendations
 
 Add a check to verify that the address passed as an argument is different from `address(0)`.
+
+---
+
+## withdrawFees function should have onlyOwner modifier
+
+### Severity
+
+Low risk
+
+### Relevant GitHub Links
+
+[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L157](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L157)
+
+## Summary
+
+The function `PuppyRaffle::withdrawFees` should be used by the owner, but currently anyone can call it.
+
+## Vulnerability Details
+
+```solidity
+@>  function withdrawFees() external {
+        require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
+        uint256 feesToWithdraw = totalFees;
+        totalFees = 0;
+        (bool success,) = feeAddress.call{value: feesToWithdraw}("");
+        require(success, "PuppyRaffle: Failed to withdraw fees");
+    }
+```
+
+The function `PuppyRaffle::withdrawFees` allows you to collect the fees on the contract by sending them to the address chosen by the owner, therefore the owner should be the only one who can call the method.
+
+## Impact
+
+The impact is low, because if someone calls the function, the fees present on the contract are still sent to the address chosen by the owner, so there is no loss of funds.
+
+## Tools Used
+
+Manual review
+
+## Recommendations
+
+Add the `onlyOwner` modifier.
+
+```diff
+-    function withdrawFees() external {
++    function withdrawFees() external onlyOwner {
+```
