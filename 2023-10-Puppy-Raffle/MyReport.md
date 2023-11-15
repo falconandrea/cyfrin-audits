@@ -1,63 +1,45 @@
-## Using block properties as a source of pseudorandomness can allow an attacker to manipulate the generated value.
+# First Flight #2: Puppy Raffle - Findings Report
 
-### Severity
+# Table of contents
 
-High risk
+- ## [Contest Summary](#contest-summary)
+- ## [Results Summary](#results-summary)
+- ## High Risk Findings
+  - ### [H-01. reentrancy vulnerability on refund](#H-01)
+  - ### [H-02. Using block properties as a source of pseudorandomness can allow an attacker to manipulate the generated value.](#H-02)
+  - ### [H-03. enterRaffle accepts Zero Address](#H-03)
+- ## Medium Risk Findings
+  - ### [M-01. withdrawFees uses contract balance in a check](#M-01)
+- ## Low Risk Findings
+  - ### [L-01. withdrawFees function should have onlyOwner modifier](#L-01)
+  - ### [L-02. missing Zero Address validation on feeAddress](#L-02)
+  - ### [L-03. \_isActivePlayer function is not used](#L-03)
+  - ### [L-04. imageUris should be constants](#L-04)
+  - ### [L-05. raffleDuration should be immutable](#L-05)
 
-### Relevant GitHub Links
+# <a id='contest-summary'></a>Contest Summary
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L128-L129](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L128-L129)
+### Sponsor: First Flight #2
 
-## Summary
+### Dates: Oct 25th, 2023 - Nov 1st, 2023
 
-The `PuppyRaffle::selectWinner` function to choose the winner generates a random number using the block data (`block.timestamp` and `block.difficulty`). This technique is not safe.
+[See more contest details here](https://www.codehawks.com/contests/clo383y5c000jjx087qrkbrj8)
 
-## Vulnerability Details
+# <a id='results-summary'></a>Results Summary
 
-The `PuppyRaffle::selectWinner` function calculates the value of winnerIndex via `block.timestamp` and `block.difficulty`.
+### Number of findings:
 
-```solidity
-function selectWinner() external {
-        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
-        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
-@>      uint256 winnerIndex =
-@>          uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
-        address winner = players[winnerIndex];
-```
+- High: 3
+- Medium: 1
+- Low: 5
 
-The same method is also used to calculate the rarity of the NFT to be mined.
+# High Risk Findings
 
-```solidity
-        // We use a different RNG calculate from the winnerIndex to determine rarity
-@>      uint256 rarity = uint256(keccak256(abi.encodePacked(msg.sender, block.difficulty))) % 100;
-```
-
-Using `block` data to generate random numbers in Solidity can be risky and potentially vulnerable to miner manipulation or front-running attacks. This is because the block value can be influenced or known by transaction participants.
-
-## Impact
-
-The impact is high because an attacker exploiting this vulnerability could win every match.
-
-## Tools Used
-
-- Foundry
-- Manual check
-
-## Recommendations
-
-To generate random numbers more securely in Solidity, it is recommended that you use external entropy sources or trusted random number generation contracts, such as the Chainlink VRF random number generator.
-
----
-
-## reentrancy vulnerability on refund
-
-### Severity
-
-High risk
+## <a id='H-01'></a>H-01. reentrancy vulnerability on refund
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L96-L105](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L96-L105)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L96-L105
 
 ## Summary
 
@@ -216,17 +198,56 @@ It is necessary to move the line that updates the status before making the `send
     }
 ```
 
----
-
-## enterRaffle accepts Zero Address
-
-### Severity
-
-Medium risk
+## <a id='H-02'></a>H-02. Using block properties as a source of pseudorandomness can allow an attacker to manipulate the generated value.
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L81-L83](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L81-L83)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L128-L129
+
+## Summary
+
+The `PuppyRaffle::selectWinner` function to choose the winner generates a random number using the block data (`block.timestamp` and `block.difficulty`). This technique is not safe.
+
+## Vulnerability Details
+
+The `PuppyRaffle::selectWinner` function calculates the value of winnerIndex via `block.timestamp` and `block.difficulty`.
+
+```solidity
+function selectWinner() external {
+        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
+        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
+@>      uint256 winnerIndex =
+@>          uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
+        address winner = players[winnerIndex];
+```
+
+The same method is also used to calculate the rarity of the NFT to be mined.
+
+```solidity
+        // We use a different RNG calculate from the winnerIndex to determine rarity
+@>      uint256 rarity = uint256(keccak256(abi.encodePacked(msg.sender, block.difficulty))) % 100;
+```
+
+Using `block` data to generate random numbers in Solidity can be risky and potentially vulnerable to miner manipulation or front-running attacks. This is because the block value can be influenced or known by transaction participants.
+
+## Impact
+
+The impact is high because an attacker exploiting this vulnerability could win every match.
+
+## Tools Used
+
+- Foundry
+- Manual check
+
+## Recommendations
+
+To generate random numbers more securely in Solidity, it is recommended that you use external entropy sources or trusted random number generation contracts, such as the Chainlink VRF random number generator.
+
+## <a id='H-03'></a>H-03. enterRaffle accepts Zero Address
+
+### Relevant GitHub Links
+
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L81-L83
 
 ## Summary
 
@@ -341,18 +362,14 @@ function enterRaffle(address[] memory newPlayers) public payable {
 ```
 
 </details>
+		
+# Medium Risk Findings
 
----
-
-## withdrawFees uses contract balance in a check
-
-### Severity
-
-Medium risk
+## <a id='M-01'></a>M-01. withdrawFees uses contract balance in a check
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L158](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L158)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L158
 
 ## Summary
 
@@ -488,138 +505,35 @@ In the event that ´entranceFee´ is for example `1 ether`, if the attacker adds
 
 It is recommended not to use the smart contract balance, `address(this).balance` in this case, in the controls, but to use a dedicated variable.
 
----
+# Low Risk Findings
 
-## raffleDuration should be immutable
-
-### Severity
-
-Low risk
+## <a id='L-01'></a>L-01. withdrawFees function should have onlyOwner modifier
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L24](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L24)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L157
 
 ## Summary
 
-The variable `PuppyRaffle::raffleDuration` should be immutable to consume less gas.
-
-## Vulnerability Details
-
-`PuppyRaffle::raffleDuration` is set by the constructor and is no longer modified, you can save gas by setting it as immutable.
-
-```diff
-    address[] public players;
--   uint256 public raffleDuration;
-+   uint256 public immutable raffleDuration;
-    uint256 public raffleStartTime;
-    address public previousWinner;
-```
-
-## Impact
-
-The impact is minimal, just more gas is consumed.
-
-## Tools Used
-
-Manual review
-
-## Recommendations
-
-Set the variable as immutable.
-
----
-
-## imageUris should be constants
-
-### Severity
-
-Low risk
-
-### Relevant GitHub Links
-
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L38](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L38)
-
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L43](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L43)
-
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L48](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L48)
-
-## Summary
-
-`commonImageUri`, `rareImageUri` and `legendaryImageUri` should be set as constants.
-
-## Vulnerability Details
-
-`commonImageUri`, `rareImageUri` and `legendaryImageUri` are not updated following deployment should be declared constant to save gas.
-
-```diff
-    // Stats for the common puppy (pug)
--   string private commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
-+   string private constant commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
-    uint256 public constant COMMON_RARITY = 70;
-    string private constant COMMON = "common";
-
-    // Stats for the rare puppy (st. bernard)
--   string private rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
-+   string private constant rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
-    uint256 public constant RARE_RARITY = 25;
-    string private constant RARE = "rare";
-
-    // Stats for the legendary puppy (shiba inu)
--   string private legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
-+   string private constant legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
-    uint256 public constant LEGENDARY_RARITY = 5;
-    string private constant LEGENDARY = "legendary";
-```
-
-## Impact
-
-The impact is low, more gas is just consumed.
-
-## Tools Used
-
-Manual review
-
-## Recommendations
-
-Add `constant` to save gas.
-
----
-
-## \_isActivePlayer function is not used
-
-### Severity
-
-Low risk
-
-### Relevant GitHub Links
-
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L173-L180](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L173-L180)
-
-## Summary
-
-The internal function `_isActivePlayer` is not used in the smart contract.
+The function `PuppyRaffle::withdrawFees` should be used by the owner, but currently anyone can call it.
 
 ## Vulnerability Details
 
 ```solidity
-    /// @notice this function will return true if the msg.sender is an active player
-    function _isActivePlayer() internal view returns (bool) {
-        for (uint256 i = 0; i < players.length; i++) {
-            if (players[i] == msg.sender) {
-                return true;
-            }
-        }
-        return false;
+@>  function withdrawFees() external {
+        require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
+        uint256 feesToWithdraw = totalFees;
+        totalFees = 0;
+        (bool success,) = feeAddress.call{value: feesToWithdraw}("");
+        require(success, "PuppyRaffle: Failed to withdraw fees");
     }
 ```
 
-The function `_isActivePlayer` is internal and can only be used by the contract itself, but is not used.
-It can be removed to reduce gas consumption and to avoid creating confusion by leaving functions unused.
+The function `PuppyRaffle::withdrawFees` allows you to collect the fees on the contract by sending them to the address chosen by the owner, therefore the owner should be the only one who can call the method.
 
 ## Impact
 
-The impact is low, deployment only consumes more gas and it can be confusing to find a function that is not used.
+The impact is low, because if someone calls the function, the fees present on the contract are still sent to the address chosen by the owner, so there is no loss of funds.
 
 ## Tools Used
 
@@ -627,21 +541,20 @@ Manual review
 
 ## Recommendations
 
-Remove the unused function.
+Add the `onlyOwner` modifier.
 
----
+```diff
+-    function withdrawFees() external {
++    function withdrawFees() external onlyOwner {
+```
 
-## missing Zero Address validation on feeAddress
-
-### Severity
-
-Low risk
+## <a id='L-02'></a>L-02. missing Zero Address validation on feeAddress
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L62](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L62)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L62
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L168](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L168)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L168
 
 ## Summary
 
@@ -710,39 +623,36 @@ Manual review.
 
 Add a check to verify that the address passed as an argument is different from `address(0)`.
 
----
-
-## withdrawFees function should have onlyOwner modifier
-
-### Severity
-
-Low risk
+## <a id='L-03'></a>L-03. \_isActivePlayer function is not used
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L157](https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L157)
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L173-L180
 
 ## Summary
 
-The function `PuppyRaffle::withdrawFees` should be used by the owner, but currently anyone can call it.
+The internal function `_isActivePlayer` is not used in the smart contract.
 
 ## Vulnerability Details
 
 ```solidity
-@>  function withdrawFees() external {
-        require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
-        uint256 feesToWithdraw = totalFees;
-        totalFees = 0;
-        (bool success,) = feeAddress.call{value: feesToWithdraw}("");
-        require(success, "PuppyRaffle: Failed to withdraw fees");
+    /// @notice this function will return true if the msg.sender is an active player
+    function _isActivePlayer() internal view returns (bool) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i] == msg.sender) {
+                return true;
+            }
+        }
+        return false;
     }
 ```
 
-The function `PuppyRaffle::withdrawFees` allows you to collect the fees on the contract by sending them to the address chosen by the owner, therefore the owner should be the only one who can call the method.
+The function `_isActivePlayer` is internal and can only be used by the contract itself, but is not used.
+It can be removed to reduce gas consumption and to avoid creating confusion by leaving functions unused.
 
 ## Impact
 
-The impact is low, because if someone calls the function, the fees present on the contract are still sent to the address chosen by the owner, so there is no loss of funds.
+The impact is low, deployment only consumes more gas and it can be confusing to find a function that is not used.
 
 ## Tools Used
 
@@ -750,9 +660,88 @@ Manual review
 
 ## Recommendations
 
-Add the `onlyOwner` modifier.
+Remove the unused function.
+
+## <a id='L-04'></a>L-04. imageUris should be constants
+
+### Relevant GitHub Links
+
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L38
+
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L43
+
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L48
+
+## Summary
+
+`commonImageUri`, `rareImageUri` and `legendaryImageUri` should be set as constants.
+
+## Vulnerability Details
+
+`commonImageUri`, `rareImageUri` and `legendaryImageUri` are not updated following deployment should be declared constant to save gas.
 
 ```diff
--    function withdrawFees() external {
-+    function withdrawFees() external onlyOwner {
+    // Stats for the common puppy (pug)
+-   string private commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
++   string private constant commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
+    uint256 public constant COMMON_RARITY = 70;
+    string private constant COMMON = "common";
+
+    // Stats for the rare puppy (st. bernard)
+-   string private rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
++   string private constant rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
+    uint256 public constant RARE_RARITY = 25;
+    string private constant RARE = "rare";
+
+    // Stats for the legendary puppy (shiba inu)
+-   string private legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
++   string private constant legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
+    uint256 public constant LEGENDARY_RARITY = 5;
+    string private constant LEGENDARY = "legendary";
 ```
+
+## Impact
+
+The impact is low, more gas is just consumed.
+
+## Tools Used
+
+Manual review
+
+## Recommendations
+
+Add `constant` to save gas.
+
+## <a id='L-05'></a>L-05. raffleDuration should be immutable
+
+### Relevant GitHub Links
+
+https://github.com/Cyfrin/2023-10-Puppy-Raffle/blob/07399f4d02520a2abf6f462c024842e495ca82e4/src/PuppyRaffle.sol#L24
+
+## Summary
+
+The variable `PuppyRaffle::raffleDuration` should be immutable to consume less gas.
+
+## Vulnerability Details
+
+`PuppyRaffle::raffleDuration` is set by the constructor and is no longer modified, you can save gas by setting it as immutable.
+
+```diff
+    address[] public players;
+-   uint256 public raffleDuration;
++   uint256 public immutable raffleDuration;
+    uint256 public raffleStartTime;
+    address public previousWinner;
+```
+
+## Impact
+
+The impact is minimal, just more gas is consumed.
+
+## Tools Used
+
+Manual review
+
+## Recommendations
+
+Set the variable as immutable.

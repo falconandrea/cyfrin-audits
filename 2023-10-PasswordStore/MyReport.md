@@ -1,63 +1,42 @@
-## s_owner is not set as immutable consuming more gas
+# First Flight #1: PasswordStore - Findings Report
 
-### Severity
+# Table of contents
 
-Low risk
+- ## [Contest Summary](#contest-summary)
+- ## [Results Summary](#results-summary)
+- ## High Risk Findings
 
-### Relevant GitHub Links
+  - ### [H-01. a not-owner user can change the password](#H-01)
+  - ### [H-02. saving password not encrypted is not safe](#H-02)
 
-[https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L13](https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L13)
+- ## Low Risk Findings
+  - ### [L-01. the comment describing the getPassword function are incorrect](#L-01)
+  - ### [L-02. using the modifier also in the getPassword function saves gas](#L-02)
+  - ### [L-03. s_owner is not set as immutable consuming more gas](#L-03)
 
-[https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L19](https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L19)
+# <a id='contest-summary'></a>Contest Summary
 
-## Summary
+### Sponsor: First Flight #1
 
-The `PasswordStore::s_owner` variable is not changed after the initialization inside the constructor, so it is best to set it as immutable to save gas.
+### Dates: Oct 18th, 2023 - Oct 25th, 2023
 
-## Vulnerability Details
+[See more contest details here](https://www.codehawks.com/contests/clnuo221v0001l50aomgo4nyn)
 
-```solidity
-contract PasswordStore {
-    error PasswordStore__NotOwner();
+# <a id='results-summary'></a>Results Summary
 
-@>  address private s_owner;
-    string private s_password;
-```
+### Number of findings:
 
-If a variable is not changed during the life of the smart contract it is better to set it as immutable because reading it costs much less gas.
+- High: 2
+- Medium: 0
+- Low: 3
 
-## Impact
+# High Risk Findings
 
-More gas is wasted.
-
-Using the command `forge test --gas-report`, the deployment gas cost results of 225780 without immutable, and 209477 with immutable.
-Also the `getPassword` function consumes max 3320 of gas without immutable, and 1217 with immutable.
-
-## Tools Used
-
-- manual check
-- foundry
-
-## Recommendations
-
-Set `s_owner` to immutable.
-
-```diff
--  address private s_owner;
-+  address private immutable s_owner;
-```
-
----
-
-## a not-owner user can change the password
-
-### Severity
-
-High risk
+## <a id='H-01'></a>H-01. a not-owner user can change the password
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L26-L27](https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L26-L27)
+https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L26-L27
 
 ## Summary
 
@@ -96,7 +75,7 @@ The impact is high because the function was designed to be used only by the owne
 
 ## Tools Used
 
-- manual check
+- manual review
 - foundry
 
 ## Recommendations
@@ -120,27 +99,106 @@ To avoid this vulnerability you need to create a modifier that is called on the 
      s_password = newPassword;
           emit SetNetPassword();
      }
-
--    function getPassword() external view returns (string memory) {
-+    function getPassword() external view isOwner returns (string memory) {
--        if (msg.sender != s_owner) {
--            revert PasswordStore__NotOwner();
--        }
-         return s_password;
-     }
 ```
 
----
-
-## using the modifier also in the getPassword function saves gas
-
-### Severity
-
-Low risk
+## <a id='H-02'></a>H-02. saving password not encrypted is not safe
 
 ### Relevant GitHub Links
 
-[https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L35](https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L35)
+https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L27
+
+## Summary
+
+The blockchain is public and accessible to anyone, and it is not safe to save the password in clear text, without any type of encryption.
+
+## Vulnerability Details
+
+The function `PasswordStore::setPassword` saves the password without encryption.
+
+```solidity
+    function setPassword(string memory newPassword) external {
+@>      s_password = newPassword;
+        emit SetNetPassword();
+    }
+```
+
+With this test I can read the storage slot 1 and get the password.
+
+```solidity
+    function test_read_saved_password_from_storage() public {
+        vm.startPrank(owner);
+        string memory expectedPassword = "myNewPassword";
+        passwordStore.setPassword(expectedPassword);
+
+        // Read variable `s_password` from storage
+        bytes32 slot0 = vm.load(address(passwordStore), bytes32(uint256(1)));
+        console.logBytes32(slot0);
+        // It returns "0x6d794e657750617373776f72640000000000000000000000000000000000001a"
+        // Converted from bytes32 to string is "myNewPassword"
+    }
+```
+
+## Impact
+
+The impact is medium, because by not encrypting the password there is a security problem in case of reading the data via the storage slot.
+I didn't set high impact because it's not clear from the specifications whether data encryption was needed or not.
+
+## Tools Used
+
+- Manual check
+- Foundry
+
+## Recommendations
+
+Performing on-chain encryption is difficult. It is recommended to send the password already encrypted with possible salt or off-chain encryption methods.
+
+# Low Risk Findings
+
+## <a id='L-01'></a>L-01. the comment describing the getPassword function are incorrect
+
+### Relevant GitHub Links
+
+https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L33
+
+## Summary
+
+The comment describing the `PasswordStore::getPassword` function is incorrect, it indicates sending a parameter that is not used by the function
+
+## Vulnerability Details
+
+The comment indicates a parameter `newPassword` to pass to the function, but the `PasswordStore::getPassword` function has no parameters.
+The comment was probably copied from the `PasswordStore::setPassword` function and the line indicating the parameter to pass to the function was not removed.
+
+```solidity
+    /*
+     * @notice This allows only the owner to retrieve the password.
+@>   * @param newPassword The new password to set.
+     */
+    function getPassword() external view returns (string memory) {
+        if (msg.sender != s_owner) {
+            revert PasswordStore__NotOwner();
+        }
+        return s_password;
+    }
+```
+
+## Impact
+
+The impact is minimal because it does not block the functioning of the smart contract.
+
+## Tools Used
+
+- Manual check
+
+## Recommendations
+
+Update the comment removing the `@param` row.
+
+## <a id='L-02'></a>L-02. using the modifier also in the getPassword function saves gas
+
+### Relevant GitHub Links
+
+https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L35
 
 ## Summary
 
@@ -166,7 +224,7 @@ It also reduces the amount of duplicate code inside the smart contract.
 
 ## Tools Used
 
-- manual check
+- manual review
 - foundry
 
 ## Recommendations
@@ -192,4 +250,49 @@ As shown previously, we have to create an internal function `_checkOwner` with t
 -        }
          return s_password;
      }
+```
+
+## <a id='L-03'></a>L-03. s_owner is not set as immutable consuming more gas
+
+### Relevant GitHub Links
+
+https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L13
+
+https://github.com/Cyfrin/2023-10-PasswordStore/blob/856ed94bfcf1031bf9d13514cb21b591d88ed323/src/PasswordStore.sol#L19
+
+## Summary
+
+The `PasswordStore::s_owner` variable is not changed after the initialization inside the constructor, so it is best to set it as immutable to save gas.
+
+## Vulnerability Details
+
+```solidity
+contract PasswordStore {
+    error PasswordStore__NotOwner();
+
+@>  address private s_owner;
+    string private s_password;
+```
+
+If a variable is not changed during the life of the smart contract it is better to set it as immutable because reading it costs much less gas.
+
+## Impact
+
+More gas is wasted.
+
+Using the command `forge test --gas-report`, the deployment gas cost results of 225780 without immutable, and 209477 with immutable.
+Also the `getPassword` function consumes max 3320 of gas without immutable, and 1217 with immutable.
+
+## Tools Used
+
+- manual check
+- foundry
+
+## Recommendations
+
+Set `s_owner` to immutable.
+
+```diff
+-  address private s_owner;
++  address private immutable s_owner;
 ```
