@@ -3,7 +3,7 @@ pragma solidity 0.8.22;
 
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 
-/* 
+/*
  * @title SantaToken
  * @notice ERC20 token for SantasList
  * @dev Based on Solmate for extra gas efficiency

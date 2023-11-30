@@ -50,10 +50,10 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {TokenUri} from "./TokenUri.sol";
 import {SantaToken} from "./SantaToken.sol";
 
-/* 
+/*
  * @title SantasList
  * @author South Pole Elves 0x815f577f1c1bce213c012f166744937c889daf17
- * 
+ *
  * @notice Santas's naughty or nice list, all on chain!
  */
 contract SantasList is ERC721, TokenUri {
@@ -76,8 +76,10 @@ contract SantasList is ERC721, TokenUri {
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
-    mapping(address person => Status naughtyOrNice) private s_theListCheckedOnce;
-    mapping(address person => Status naughtyOrNice) private s_theListCheckedTwice;
+    mapping(address person => Status naughtyOrNice)
+        private s_theListCheckedOnce;
+    mapping(address person => Status naughtyOrNice)
+        private s_theListCheckedTwice;
     address private immutable i_santa;
     uint256 private s_tokenCounter;
     SantaToken private immutable i_santaToken;
@@ -111,10 +113,10 @@ contract SantasList is ERC721, TokenUri {
         i_santaToken = new SantaToken(address(this));
     }
 
-    /* 
-     * @notice Do a first pass on someone if they are naughty or nice. 
+    /*
+     * @notice Do a first pass on someone if they are naughty or nice.
      * Only callable by santa
-     * 
+     *
      * @param person The person to check
      * @param status The status of the person
      */
@@ -123,10 +125,10 @@ contract SantasList is ERC721, TokenUri {
         emit CheckedOnce(person, status);
     }
 
-    /* 
-     * @notice Do a second pass on someone if they are naughty or nice. 
+    /*
+     * @notice Do a second pass on someone if they are naughty or nice.
      * Only callable by santa. Only if they pass this are they eligible for a present.
-     * 
+     *
      * @param person The person to check
      * @param status The status of the person
      */
@@ -151,12 +153,15 @@ contract SantasList is ERC721, TokenUri {
         if (balanceOf(msg.sender) > 0) {
             revert SantasList__AlreadyCollected();
         }
-        if (s_theListCheckedOnce[msg.sender] == Status.NICE && s_theListCheckedTwice[msg.sender] == Status.NICE) {
+        if (
+            s_theListCheckedOnce[msg.sender] == Status.NICE &&
+            s_theListCheckedTwice[msg.sender] == Status.NICE
+        ) {
             _mintAndIncrement();
             return;
         } else if (
-            s_theListCheckedOnce[msg.sender] == Status.EXTRA_NICE
-                && s_theListCheckedTwice[msg.sender] == Status.EXTRA_NICE
+            s_theListCheckedOnce[msg.sender] == Status.EXTRA_NICE &&
+            s_theListCheckedTwice[msg.sender] == Status.EXTRA_NICE
         ) {
             _mintAndIncrement();
             i_santaToken.mint(msg.sender);
@@ -165,7 +170,7 @@ contract SantasList is ERC721, TokenUri {
         revert SantasList__NotNice();
     }
 
-    /* 
+    /*
      * @notice Buy a present for someone else. This should only be callable by someone who is naughty.
      * @dev You'll first need to approve the SantasList contract to spend your SantaTokens.
      */
@@ -184,7 +189,9 @@ contract SantasList is ERC721, TokenUri {
     /*//////////////////////////////////////////////////////////////
                              VIEW AND PURE
     //////////////////////////////////////////////////////////////*/
-    function tokenURI(uint256 /* tokenId */ ) public pure override returns (string memory) {
+    function tokenURI(
+        uint256 /* tokenId */
+    ) public pure override returns (string memory) {
         return TOKEN_URI;
     }
 
@@ -192,11 +199,15 @@ contract SantasList is ERC721, TokenUri {
         return address(i_santaToken);
     }
 
-    function getNaughtyOrNiceOnce(address person) external view returns (Status) {
+    function getNaughtyOrNiceOnce(
+        address person
+    ) external view returns (Status) {
         return s_theListCheckedOnce[person];
     }
 
-    function getNaughtyOrNiceTwice(address person) external view returns (Status) {
+    function getNaughtyOrNiceTwice(
+        address person
+    ) external view returns (Status) {
         return s_theListCheckedTwice[person];
     }
 

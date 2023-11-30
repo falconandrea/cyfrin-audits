@@ -24,7 +24,10 @@ contract SantasListTest is Test {
     function testCheckList() public {
         vm.prank(santa);
         santasList.checkList(user, SantasList.Status.NICE);
-        assertEq(uint256(santasList.getNaughtyOrNiceOnce(user)), uint256(SantasList.Status.NICE));
+        assertEq(
+            uint256(santasList.getNaughtyOrNiceOnce(user)),
+            uint256(SantasList.Status.NICE)
+        );
     }
 
     function testCheckListTwice() public {
@@ -33,8 +36,14 @@ contract SantasListTest is Test {
         santasList.checkTwice(user, SantasList.Status.NICE);
         vm.stopPrank();
 
-        assertEq(uint256(santasList.getNaughtyOrNiceOnce(user)), uint256(SantasList.Status.NICE));
-        assertEq(uint256(santasList.getNaughtyOrNiceTwice(user)), uint256(SantasList.Status.NICE));
+        assertEq(
+            uint256(santasList.getNaughtyOrNiceOnce(user)),
+            uint256(SantasList.Status.NICE)
+        );
+        assertEq(
+            uint256(santasList.getNaughtyOrNiceTwice(user)),
+            uint256(SantasList.Status.NICE)
+        );
     }
 
     function testCantCheckListTwiceWithDifferentThanOnce() public {
