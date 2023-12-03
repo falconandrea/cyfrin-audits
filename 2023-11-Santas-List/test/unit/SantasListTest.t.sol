@@ -11,6 +11,7 @@ contract SantasListTest is Test {
     SantaToken santaToken;
 
     address user = makeAddr("user");
+    address user2 = makeAddr("user2");
     address santa = makeAddr("santa");
     _CheatCodes cheatCodes = _CheatCodes(HEVM_ADDRESS);
 
@@ -84,6 +85,37 @@ contract SantasListTest is Test {
         vm.startPrank(user);
         santasList.collectPresent();
         assertEq(santasList.balanceOf(user), 1);
+        vm.stopPrank();
+    }
+
+    function testCollectPresentNiceTwice() public {
+        vm.startPrank(santa);
+        santasList.checkList(user, SantasList.Status.NICE);
+        santasList.checkTwice(user, SantasList.Status.NICE);
+        vm.stopPrank();
+
+        vm.warp(santasList.CHRISTMAS_2023_BLOCK_TIME() + 1);
+
+        vm.startPrank(user);
+        santasList.collectPresent();
+        assertEq(santasList.balanceOf(user), 1);
+
+        // User send token to user2 account
+        santasList.safeTransferFrom(address(user), address(user2), 0);
+        assertEq(santasList.balanceOf(user), 0);
+
+        // User can not collect another present
+        santasList.collectPresent();
+        assertEq(santasList.balanceOf(user), 1);
+
+        // Move the previous present from original address
+        vm.startPrank(user2);
+        santasList.safeTransferFrom(address(user2), address(user), 0);
+
+        // Now user have 2 presents
+        vm.startPrank(user);
+        assertEq(santasList.balanceOf(user), 2);
+
         vm.stopPrank();
     }
 
