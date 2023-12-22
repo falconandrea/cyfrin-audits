@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {VotingBooth} from "../src/VotingBooth.sol";
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {_CheatCodes} from "./mocks/CheatCodes.t.sol";
 
 contract VotingBoothTest is Test {
@@ -59,6 +59,32 @@ contract VotingBoothTest is Test {
         assert(!booth.isActive() && address(booth).balance == 0);
     }
 
+    function testVotePassesMoneyIsSentNotAll() public {
+        console.log("Total amount of rewards: 10 eth");
+        console.log(address(booth).balance / (1 ether));
+        console.log(
+            "There will be 2 winners, so the rewards will be 5 eth each"
+        );
+        console.log((address(booth).balance / 2) / (1 ether));
+
+        vm.prank(address(0x1));
+        booth.vote(true);
+
+        vm.prank(address(0x2));
+        booth.vote(false);
+
+        vm.prank(address(0x3));
+        booth.vote(true);
+
+        console.log("Address 0x1 balance");
+        console.log(address(0x1).balance / (1 ether));
+
+        console.log("Contract balance after rewards distribution");
+        console.log(address(booth).balance / (1 ether));
+        assert(!booth.isActive());
+        assert(address(booth).balance == 0);
+    }
+
     function testMoneyNotSentTillVotePasses() public {
         vm.prank(address(0x1));
         booth.vote(true);
@@ -69,7 +95,9 @@ contract VotingBoothTest is Test {
         assert(booth.isActive() && address(booth).balance > 0);
     }
 
-    function testIfPeopleVoteAgainstItBecomesInactiveAndMoneySentToOwner() public {
+    function testIfPeopleVoteAgainstItBecomesInactiveAndMoneySentToOwner()
+        public
+    {
         uint256 startingAmount = address(this).balance;
 
         vm.prank(address(0x1));
