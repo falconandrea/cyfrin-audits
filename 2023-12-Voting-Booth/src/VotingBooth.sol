@@ -78,7 +78,10 @@ contract VotingBooth {
     // create the contract
     constructor(address[] memory allowList) payable {
         // require minimum eth proposal reward
-        require(msg.value >= MIN_FUNDING, "DP: Minimum 1 eth proposal reward required");
+        require(
+            msg.value >= MIN_FUNDING,
+            "DP: Minimum 1 eth proposal reward required"
+        );
 
         // cache list length
         uint256 allowListLength = allowList.length;
@@ -125,7 +128,10 @@ contract VotingBooth {
         address voter = msg.sender;
 
         // prevent voting if not allowed or already voted
-        require(s_voters[voter] == ALLOWED, "DP: voter not allowed or already voted");
+        require(
+            s_voters[voter] == ALLOWED,
+            "DP: voter not allowed or already voted"
+        );
 
         // update storage to record that this user has voted
         s_voters[voter] = VOTED;
@@ -153,7 +159,7 @@ contract VotingBooth {
         // pass the proposal (it didn't require 3 For votes), it just
         // requires the quorum to be reached (enough people to vote)
         //
-        if (totalCurrentVotes * 100 / s_totalAllowedVoters >= MIN_QUORUM) {
+        if ((totalCurrentVotes * 100) / s_totalAllowedVoters >= MIN_QUORUM) {
             // mark voting as having been completed
             s_votingComplete = true;
 
@@ -204,7 +210,12 @@ contract VotingBooth {
                 // the last voter can get 1 wei more than the rest - this is not
                 // a valid finding, it is simply how we deal with imperfect division
                 if (i == totalVotesFor - 1) {
-                    rewardPerVoter = Math.mulDiv(totalRewards, 1, totalVotes, Math.Rounding.Ceil);
+                    rewardPerVoter = Math.mulDiv(
+                        totalRewards,
+                        1,
+                        totalVotes,
+                        Math.Rounding.Ceil
+                    );
                 }
                 _sendEth(s_votersFor[i], rewardPerVoter);
             }
